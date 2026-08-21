@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Decision Assistant — India</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-icon">🌦️</span>
+        <div>
+          <h1>Weather Decision Assistant <span class="brand-flag">🇮🇳</span></h1>
+          <p class="tagline">Should you do it today? Let India's forecast decide.</p>
+        </div>
+      </div>
+
+      <form class="location-bar" id="location-form" autocomplete="off">
+        <div class="search-wrap">
+          <input
+            type="text"
+            id="location-input"
+            placeholder="Search a Goa village/taluka or Indian city…"
+            aria-label="Search for a Goa taluka or Indian city"
+          />
+          <div id="search-results" class="search-results hidden" role="listbox"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="search-btn">Search</button>
+        <button type="button" class="btn btn-secondary" id="use-location-btn">
+          <span class="icon">📍</span> Use my location
+        </button>
+      </form>
+    </header>
+
+    <main>
+      <!-- Empty state -->
+      <section id="empty-state" class="state-panel">
+        <div class="state-icon">🧭</div>
+        <h2>Find out if today's weather works for you</h2>
+        <p>Search any Goa village, town or taluka, or a major Indian city, or share your location.</p>
+
+        <p class="quick-label">Popular cities</p>
+        <div class="quick-cities" id="quick-cities">
+          <button type="button" class="chip" data-place="Delhi">Delhi</button>
+          <button type="button" class="chip" data-place="Mumbai">Mumbai</button>
+          <button type="button" class="chip" data-place="Bengaluru">Bengaluru</button>
+          <button type="button" class="chip" data-place="Chennai">Chennai</button>
+          <button type="button" class="chip" data-place="Kolkata">Kolkata</button>
+          <button type="button" class="chip" data-place="Hyderabad">Hyderabad</button>
+          <button type="button" class="chip" data-place="Pune">Pune</button>
+          <button type="button" class="chip" data-place="Ahmedabad">Ahmedabad</button>
+          <button type="button" class="chip" data-place="Jaipur">Jaipur</button>
+          <button type="button" class="chip" data-place="Lucknow">Lucknow</button>
+        </div>
+
+        <p class="quick-label">Goa talukas</p>
+        <div class="quick-cities" id="quick-talukas">
+          <button type="button" class="chip chip-taluka" data-place="Bardez">Bardez</button>
+          <button type="button" class="chip chip-taluka" data-place="Bicholim">Bicholim</button>
+          <button type="button" class="chip chip-taluka" data-place="Pernem">Pernem</button>
+          <button type="button" class="chip chip-taluka" data-place="Sattari">Sattari</button>
+          <button type="button" class="chip chip-taluka" data-place="Tiswadi">Tiswadi</button>
+          <button type="button" class="chip chip-taluka" data-place="Canacona">Canacona</button>
+          <button type="button" class="chip chip-taluka" data-place="Dharbandora">Dharbandora</button>
+          <button type="button" class="chip chip-taluka" data-place="Mormugao">Mormugao</button>
+          <button type="button" class="chip chip-taluka" data-place="Quepem">Quepem</button>
+          <button type="button" class="chip chip-taluka" data-place="Salcete">Salcete</button>
+          <button type="button" class="chip chip-taluka" data-place="Sanguem">Sanguem</button>
+          <button type="button" class="chip chip-taluka" data-place="Ponda">Ponda</button>
+        </div>
+      </section>
+
+      <!-- Loading state -->
+      <section id="loading-state" class="state-panel hidden">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Fetching the forecast…</p>
+      </section>
+
+      <!-- No-results state: search term doesn't match the supported database -->
+      <section id="no-results-state" class="state-panel hidden">
+        <div class="state-icon">🔍</div>
+        <h2 id="no-results-message">No results found</h2>
+        <p>This app only covers Goa (all talukas, towns and villages) and major Indian cities. Try one of the suggestions above.</p>
+      </section>
+
+      <!-- Error state: a supported location was found, but weather data couldn't be retrieved -->
+      <section id="error-state" class="state-panel hidden">
+        <div class="state-icon">⚠️</div>
+        <h2>Something went wrong</h2>
+        <p id="error-message">We couldn't load the weather data.</p>
+        <button class="btn btn-secondary" id="retry-btn">Try again</button>
+      </section>
+
+      <!-- Main content -->
+      <div id="content" class="hidden">
+        <!-- Current conditions dashboard -->
+        <section class="dashboard">
+          <div class="card current-card">
+            <div class="current-main">
+              <div class="current-name" id="current-name">—</div>
+              <div class="current-meta">
+                <span id="current-state">—</span>
+                <span class="meta-sep">•</span>
+                <span id="current-type" class="type-badge">—</span>
+              </div>
+              <div class="current-district hidden" id="current-district"></div>
+              <div class="current-temp-row">
+                <span class="current-icon" id="current-icon">☀️</span>
+                <span class="current-temp" id="current-temp">--°</span>
+              </div>
+              <div class="current-desc" id="current-desc">—</div>
+              <div class="current-feels">Feels like <span id="current-feels">--°</span></div>
+            </div>
+            <div class="current-stats">
+              <div class="stat">
+                <span class="stat-label">Humidity</span>
+                <span class="stat-value" id="stat-humidity">--%</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Wind</span>
+                <span class="stat-value" id="stat-wind">-- km/h</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Rain chance</span>
+                <span class="stat-value" id="stat-rain">--%</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Rainfall</span>
+                <span class="stat-value" id="stat-rainfall">-- mm</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">UV index</span>
+                <span class="stat-value" id="stat-uv">--</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Cloud cover</span>
+                <span class="stat-value" id="stat-clouds">--%</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Pressure</span>
+                <span class="stat-value" id="stat-pressure">-- hPa</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Visibility</span>
+                <span class="stat-value" id="stat-visibility">-- km</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Sunrise</span>
+                <span class="stat-value" id="stat-sunrise">--:--</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Sunset</span>
+                <span class="stat-value" id="stat-sunset">--:--</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card hourly-card">
+            <h3>Hourly Forecast</h3>
+            <div class="hourly-scroll" id="hourly-scroll"></div>
+          </div>
+
+          <div class="card daily-card">
+            <h3>7-Day Forecast</h3>
+            <div class="daily-list" id="daily-list"></div>
+          </div>
+        </section>
+
+        <!-- Decision assistant -->
+        <section class="decisions">
+          <h2 class="section-title">Is today good for…</h2>
+          <p class="section-subtitle">Rule-based recommendations for six everyday activities.</p>
+          <div class="activity-grid" id="activity-grid"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <p>Covers all of Goa (talukas, towns and villages) and major Indian cities. Weather data from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Recommendations are rule-based estimates, not professional advice.</p>
+    </footer>
+  </div>
+
+  <script src="js/goa-villages-data.js"></script>
+  <script src="js/locations-db.js"></script>
+  <script src="js/location.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/decisions.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
