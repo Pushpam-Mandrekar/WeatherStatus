@@ -88,6 +88,7 @@ const DAILY_PARAMS = [
   'precipitation_probability_max',
   'precipitation_sum',
   'wind_speed_10m_max',
+  'relative_humidity_2m_mean',
 ].join(',');
 
 /** Fetch and normalize forecast data for a given coordinate pair. */
@@ -166,6 +167,7 @@ function normalize(data) {
     precipitationProbabilityMax: daily.precipitation_probability_max[i],
     precipitationSum: daily.precipitation_sum[i],
     windSpeedMax: daily.wind_speed_10m_max[i],
+    humidityMean: daily.relative_humidity_2m_mean[i],
     weatherCode: daily.weather_code[i],
     icon: describeWeatherCode(daily.weather_code[i]).icon,
     description: describeWeatherCode(daily.weather_code[i]).label,
