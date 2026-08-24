@@ -1211,8 +1211,29 @@ body {
     flex: 1;
   }
 
+  /* flex-basis:100% forces the search box onto its own row instead of
+     shrinking to fit alongside the buttons — without this, flexbox tries
+     shrinking every item before wrapping, crushing the input down to a
+     sliver and leaving the bell to wrap onto an unpredictable row. */
   .search-wrap {
-    flex: 1;
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Decoupled from the bell's position: at this width the header can wrap
+     the bell almost anywhere (including hard against the left edge), and
+     a panel anchored via `right: 0` to that button would render partly or
+     entirely off-screen. Fixed positioning with viewport-relative insets
+     keeps it on-screen no matter where the bell lands. */
+  .notif-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 84px;
+    width: auto;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
   }
 }
 
