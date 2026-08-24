@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Weather Decision Assistant — India</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
   <div class="app">
@@ -31,8 +32,52 @@
         <button type="button" class="btn btn-secondary" id="use-location-btn">
           <span class="icon">📍</span> Use my location
         </button>
+        <div class="notif-wrap">
+          <button type="button" class="icon-btn" id="notif-bell" aria-label="Weather alerts" aria-haspopup="true">🔔</button>
+          <div class="notif-panel hidden" id="notif-panel">
+            <h3>Weather Alerts</h3>
+            <p class="notif-location" id="notif-location">📍 Search a location first</p>
+
+            <div class="notif-row">
+              <div>
+                <div class="notif-row-title">☔ Rain Alert</div>
+                <p class="notif-row-desc">Notify me when rain is likely within the next 60 minutes.</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="notif-rain-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="notif-row">
+              <div>
+                <div class="notif-row-title">⚠️ Severe Weather</div>
+                <p class="notif-row-desc">Notify me about dangerous heat, heavy rain or strong wind.</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="notif-severe-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <p class="notif-permission-note" id="notif-permission-note"></p>
+            <p class="notif-scope-note">
+              Browser notifications need your permission and only fire while this tab is open — this app has no
+              backend server to deliver alerts once you've closed it.
+            </p>
+          </div>
+        </div>
       </form>
     </header>
+
+    <!-- In-page rain banner: shown while visiting, regardless of notification permission -->
+    <div class="rain-banner hidden" id="rain-banner">
+      <span>🌧️</span>
+      <div>
+        <strong id="rain-banner-title">Rain expected soon</strong>
+        <p id="rain-banner-body"></p>
+      </div>
+    </div>
 
     <main>
       <!-- Empty state -->
@@ -161,11 +206,72 @@
             <h3>Hourly Forecast</h3>
             <div class="hourly-scroll" id="hourly-scroll"></div>
           </div>
+        </section>
 
-          <div class="card daily-card">
-            <h3>7-Day Forecast</h3>
-            <div class="daily-list" id="daily-list"></div>
+        <!-- Rain Timing -->
+        <section class="card rain-timing-card">
+          <h3>🌧️ Rain Timing</h3>
+          <div id="rain-timing-body"></div>
+        </section>
+
+        <!-- Weather Risk -->
+        <section class="weather-risk-section" id="weather-risk-section">
+          <h2 class="section-title">⚠️ Weather Risk</h2>
+          <div id="weather-risk-body"></div>
+        </section>
+
+        <!-- Best Day This Week -->
+        <section class="card best-day-card">
+          <div class="best-day-header">
+            <h3>📅 Best Days This Week</h3>
+            <div class="activity-tabs" id="best-day-tabs">
+              <button type="button" class="tab-btn active" data-activity="outdoor">Outdoor</button>
+              <button type="button" class="tab-btn" data-activity="travel">Travel</button>
+              <button type="button" class="tab-btn" data-activity="sports">Sports</button>
+            </div>
           </div>
+          <div id="best-day-body"></div>
+        </section>
+
+        <!-- 7-Day Forecast -->
+        <section class="card daily-card">
+          <h3>7-Day Forecast</h3>
+          <div class="daily-list" id="daily-list"></div>
+        </section>
+
+        <!-- Weather Map -->
+        <section class="card weather-map-card" id="weather-map-section">
+          <div class="best-day-header">
+            <h3>🗺️ Weather Map</h3>
+            <div class="activity-tabs" id="weather-map-tabs">
+              <button type="button" class="tab-btn active" data-layer="rain">Rain</button>
+              <button type="button" class="tab-btn" data-layer="temperature">Temperature</button>
+              <button type="button" class="tab-btn" data-layer="wind">Wind</button>
+            </div>
+          </div>
+          <div id="weather-map-status" class="lazy-placeholder">Scroll here to load the map…</div>
+          <div id="weather-map-container" class="weather-map-container hidden"></div>
+          <p class="map-caption">Rain layer shows live radar returns (ground-station coverage varies by region — a blank area can mean no rain detected there, not missing data). Temperature/Wind markers show real fetched values for nearby locations.</p>
+        </section>
+
+        <!-- Weather History -->
+        <section class="card historical-card" id="historical-section">
+          <div class="best-day-header">
+            <h3>📊 Weather History</h3>
+            <div class="activity-tabs" id="historical-tabs">
+              <button type="button" class="tab-btn" data-range="7d">7 Days</button>
+              <button type="button" class="tab-btn active" data-range="30d">30 Days</button>
+              <button type="button" class="tab-btn" data-range="3m">3 Months</button>
+              <button type="button" class="tab-btn" data-range="1y">1 Year</button>
+            </div>
+          </div>
+          <div id="historical-body"><p class="lazy-placeholder">Scroll here to load historical weather…</p></div>
+        </section>
+
+        <!-- Rainfall Tracker -->
+        <section class="card rainfall-tracker-card" id="rainfall-tracker-section">
+          <h3>🌧️ Rainfall Tracker</h3>
+          <div id="rainfall-tracker-body"><p class="lazy-placeholder">Scroll here to load rainfall history…</p></div>
         </section>
 
         <!-- Decision assistant -->
@@ -187,6 +293,13 @@
   <script src="js/location.js"></script>
   <script src="js/weather.js"></script>
   <script src="js/decisions.js"></script>
+  <script src="js/rain-timing.js"></script>
+  <script src="js/weather-risk.js"></script>
+  <script src="js/best-day.js"></script>
+  <script src="js/historical.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/weather-map.js"></script>
+  <script src="js/notifications.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

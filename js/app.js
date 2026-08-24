@@ -53,9 +53,41 @@
     hourlyScroll: document.getElementById('hourly-scroll'),
     dailyList: document.getElementById('daily-list'),
     activityGrid: document.getElementById('activity-grid'),
+
+    rainTimingBody: document.getElementById('rain-timing-body'),
+    weatherRiskBody: document.getElementById('weather-risk-body'),
+    bestDayBody: document.getElementById('best-day-body'),
+    bestDayTabs: document.getElementById('best-day-tabs'),
+
+    historicalSection: document.getElementById('historical-section'),
+    historicalBody: document.getElementById('historical-body'),
+    historicalTabs: document.getElementById('historical-tabs'),
+    rainfallTrackerSection: document.getElementById('rainfall-tracker-section'),
+    rainfallTrackerBody: document.getElementById('rainfall-tracker-body'),
+
+    weatherMapSection: document.getElementById('weather-map-section'),
+    weatherMapStatus: document.getElementById('weather-map-status'),
+    weatherMapContainer: document.getElementById('weather-map-container'),
+    weatherMapTabs: document.getElementById('weather-map-tabs'),
+
+    notifBell: document.getElementById('notif-bell'),
+    notifPanel: document.getElementById('notif-panel'),
+    notifLocation: document.getElementById('notif-location'),
+    notifRainToggle: document.getElementById('notif-rain-toggle'),
+    notifSevereToggle: document.getElementById('notif-severe-toggle'),
+    notifPermissionNote: document.getElementById('notif-permission-note'),
+    rainBanner: document.getElementById('rain-banner'),
+    rainBannerBody: document.getElementById('rain-banner-body'),
   };
 
   let lastAction = null; // remembers how to retry after an error
+  let lastWeatherData = null; // for re-rendering Best Day when its tab changes
+  let bestDayActivity = 'outdoor';
+  let weatherMapLayer = 'rain';
+  let currentPlace = null; // { latitude, longitude, ... } of the location currently on screen
+  let historicalRange = '30d';
+  let historicalObserver = null;
+  let rainfallObserver = null;
 
   // ---- state machine -------------------------------------------------
 
@@ -211,10 +243,21 @@
   // ---- rendering ---------------------------------------------------------
 
   function render(weatherData, place) {
+    lastWeatherData = weatherData;
+    currentPlace = place;
     renderCurrent(weatherData, place);
     renderHourly(weatherData.hourly, weatherData.current.time);
+    renderRainTiming(weatherData);
+    renderWeatherRisk(weatherData);
+    renderBestDay(weatherData);
     renderDaily(weatherData.daily);
     renderActivities(weatherData);
+    armLazySection(els.weatherMapSection, 'map', () => loadWeatherMap(place));
+    armLazySection(els.historicalSection, 'historical', () => loadHistorical(place));
+    armLazySection(els.rainfallTrackerSection, 'rainfall', () => loadRainfallTracker(place));
+
+    els.notifLocation.textContent = `📍 ${place.name}, ${place.state || 'India'}`;
+    NotificationService.updateContext(weatherData, place.name);
   }
 
   function renderCurrent(weatherData, place) {
@@ -262,6 +305,183 @@
       </div>`
       )
       .join('');
+  }
+
+  function renderRainTiming(weatherData) {
+    const r = RainTiming.analyze(weatherData);
+
+    const statusLine = r.rainWindow
+      ? `<div class="rain-stat"><span class="label">Next expected rain</span><span class="value">${r.nextRainTime}</span></div>
+         <div class="rain-stat"><span class="label">Rain probability</span><span class="value">${r.probability}%</span></div>
+         ${r.rainfallAmount != null ? `<div class="rain-stat"><span class="label">Expected rainfall</span><span class="value">${r.rainfallAmount} mm</span></div>` : ''}`
+      : '';
+
+    const timelineHtml = r.timeline
+      .map(
+        (h) => `
+      <div class="rain-timeline-item ${h.probability >= RainTiming.RAIN_PROBABILITY_THRESHOLD ? 'is-rain' : ''}">
+        <div class="rt-time">${h.time}</div>
+        <div class="rt-icon">${h.icon}</div>
+        <div class="rt-prob">💧 ${h.probability}%</div>
+      </div>`
+      )
+      .join('');
+
+    els.rainTimingBody.innerHTML = `
+      <p class="rain-current-status">${escapeHtml(r.currentStatusText)}</p>
+      ${statusLine ? `<div class="rain-stats-row">${statusLine}</div>` : ''}
+      <div class="rain-timeline">${timelineHtml}</div>
+      <p class="rain-summary">${escapeHtml(r.summary)}</p>
+      ${r.bestOutdoorTime ? `<p class="rain-best-time"><strong>Best outdoor time:</strong> ${escapeHtml(r.bestOutdoorTime)}</p>` : ''}
+    `;
+  }
+
+  function renderWeatherRisk(weatherData) {
+    const risks = WeatherRisk.assess(weatherData);
+
+    if (risks.length === 0) {
+      els.weatherRiskBody.innerHTML = `
+        <div class="risk-card severity-normal">
+          <span class="risk-icon">🟢</span>
+          <div>
+            <div class="risk-title">Normal</div>
+            <p class="risk-message">No significant weather risks right now.</p>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const severityDot = { moderate: '🟡', high: '🟠', severe: '🔴' };
+    els.weatherRiskBody.innerHTML = risks
+      .map(
+        (r) => `
+      <div class="risk-card severity-${r.severity}">
+        <span class="risk-icon">${r.icon}</span>
+        <div>
+          <div class="risk-title">${severityDot[r.severity]} ${escapeHtml(r.title.toUpperCase())}</div>
+          <p class="risk-message">${escapeHtml(r.message)}</p>
+        </div>
+      </div>`
+      )
+      .join('');
+  }
+
+  function renderBestDay(weatherData) {
+    const top = BestDay.rank(weatherData, bestDayActivity);
+    const medals = ['🥇', '🥈', '🥉'];
+    els.bestDayBody.innerHTML = top
+      .map(
+        (d, i) => `
+      <div class="best-day-item">
+        <span class="best-day-medal">${medals[i] || ''}</span>
+        <span class="best-day-icon">${d.icon}</span>
+        <div class="best-day-info">
+          <div class="best-day-name">${escapeHtml(d.label)}</div>
+          <div class="best-day-desc">${escapeHtml(d.description)} • ${round(d.tempMax)}°/${round(d.tempMin)}° • 💧 ${round(d.precipitationProbabilityMax)}%</div>
+        </div>
+        <div class="best-day-score badge-${d.rating.toLowerCase()}">${d.score}% — ${d.rating}</div>
+      </div>`
+      )
+      .join('');
+  }
+
+  // ---- lazy-loaded sections (Weather History, Rainfall Tracker) ---------
+
+  const lazyObservers = {};
+
+  /** Resets a section to its placeholder and loads it once the user scrolls it into view. */
+  function armLazySection(sectionEl, key, loadFn) {
+    if (lazyObservers[key]) lazyObservers[key].disconnect();
+    const body = sectionEl.querySelector('[id$="-body"]');
+    if (body) body.innerHTML = '<p class="lazy-placeholder">Scroll here to load…</p>';
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect();
+          loadFn();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sectionEl);
+    lazyObservers[key] = observer;
+  }
+
+  async function loadWeatherMap(place) {
+    els.weatherMapStatus.textContent = 'Loading map…';
+    els.weatherMapStatus.classList.remove('hidden');
+    els.weatherMapContainer.classList.remove('hidden');
+    try {
+      await WeatherMap.show('weather-map-container', place, weatherMapLayer);
+      els.weatherMapStatus.classList.add('hidden');
+    } catch (err) {
+      els.weatherMapContainer.classList.add('hidden');
+      els.weatherMapStatus.textContent = err.message || 'Weather map could not be loaded. Please try again.';
+      els.weatherMapStatus.classList.remove('hidden');
+    }
+  }
+
+  async function loadHistorical(place) {
+    els.historicalBody.innerHTML = '<p class="section-loading">Loading historical weather…</p>';
+    try {
+      const stats = await HistoricalWeather.fetchRange(place.latitude, place.longitude, historicalRange);
+      renderHistorical(stats, place);
+    } catch (err) {
+      els.historicalBody.innerHTML = `<p class="section-error">${escapeHtml(err.message || 'Historical weather data is currently unavailable for this location.')}</p>`;
+    }
+  }
+
+  function renderHistorical(stats, place) {
+    els.historicalBody.innerHTML = `
+      <p class="historical-location">${escapeHtml(place.name)}, ${escapeHtml(place.state || 'India')} • ${escapeHtml(stats.rangeLabel)}</p>
+      <div class="historical-stats">
+        <div class="hist-stat"><span class="label">Average Temperature</span><span class="value">${stats.avgTemp}°C</span></div>
+        <div class="hist-stat"><span class="label">Highest</span><span class="value">${round(stats.highTemp)}°C</span></div>
+        <div class="hist-stat"><span class="label">Lowest</span><span class="value">${round(stats.lowTemp)}°C</span></div>
+        <div class="hist-stat"><span class="label">Rainfall</span><span class="value">${stats.totalRainfall} mm</span></div>
+        <div class="hist-stat"><span class="label">Rainy Days</span><span class="value">${stats.rainyDays} / ${stats.dayCount}</span></div>
+      </div>
+    `;
+  }
+
+  async function loadRainfallTracker(place) {
+    els.rainfallTrackerBody.innerHTML = '<p class="section-loading">Loading rainfall history…</p>';
+    try {
+      const [monthly, yoy] = await Promise.all([
+        HistoricalWeather.monthlyRainfall(place.latitude, place.longitude, 4),
+        HistoricalWeather.yearOverYearRainfall(place.latitude, place.longitude),
+      ]);
+      renderRainfallTracker(monthly, yoy);
+    } catch (err) {
+      els.rainfallTrackerBody.innerHTML = `<p class="section-error">${escapeHtml(err.message || 'Historical weather data is currently unavailable for this location.')}</p>`;
+    }
+  }
+
+  function renderRainfallTracker(monthly, yoy) {
+    const maxTotal = Math.max(...monthly.map((m) => m.total), 1);
+    const barsHtml = monthly
+      .map((m) => {
+        const pct = Math.max(4, Math.round((m.total / maxTotal) * 100));
+        return `
+        <div class="rainfall-bar-row">
+          <span class="rainfall-bar-label">${escapeHtml(m.label)}${m.isCurrentMonth ? ' (so far)' : ''}</span>
+          <div class="rainfall-bar-track"><div class="rainfall-bar-fill" style="width:${pct}%"></div></div>
+          <span class="rainfall-bar-value">${m.total} mm</span>
+        </div>`;
+      })
+      .join('');
+
+    const comparisonHtml =
+      yoy.percentDiff == null
+        ? ''
+        : `<p class="rainfall-comparison">${yoy.percentDiff >= 0 ? '+' : ''}${yoy.percentDiff}% vs the same period last year (${yoy.lastYear} mm)</p>`;
+
+    els.rainfallTrackerBody.innerHTML = `
+      <p class="rainfall-headline">${escapeHtml(yoy.monthLabel)} so far: <strong>${yoy.thisYear} mm</strong></p>
+      ${comparisonHtml}
+      <div class="rainfall-bars">${barsHtml}</div>
+    `;
   }
 
   function renderDaily(daily) {
@@ -341,6 +561,92 @@
   });
   els.quickCities.addEventListener('click', handleChipClick);
   els.quickTalukas.addEventListener('click', handleChipClick);
+  els.bestDayTabs.addEventListener('click', (event) => {
+    const tab = event.target.closest('.tab-btn');
+    if (!tab || !lastWeatherData) return;
+    bestDayActivity = tab.dataset.activity;
+    els.bestDayTabs.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.toggle('active', btn === tab));
+    renderBestDay(lastWeatherData);
+  });
+  els.weatherMapTabs.addEventListener('click', (event) => {
+    const tab = event.target.closest('.tab-btn');
+    if (!tab || !currentPlace) return;
+    weatherMapLayer = tab.dataset.layer;
+    els.weatherMapTabs.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.toggle('active', btn === tab));
+    loadWeatherMap(currentPlace);
+  });
+  els.historicalTabs.addEventListener('click', (event) => {
+    const tab = event.target.closest('.tab-btn');
+    if (!tab || !currentPlace) return;
+    historicalRange = tab.dataset.range;
+    els.historicalTabs.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.toggle('active', btn === tab));
+    loadHistorical(currentPlace);
+  });
+
+  // ---- weather alerts (notifications) -----------------------------------
+
+  function updatePermissionNote() {
+    const state = NotificationService.permissionState();
+    els.notifPermissionNote.className = 'notif-permission-note state-' + state;
+    if (state === 'unsupported') {
+      els.notifPermissionNote.textContent = 'Browser notifications are not supported on this device.';
+    } else if (state === 'denied') {
+      els.notifPermissionNote.textContent = 'Notifications are blocked. You can enable them from your browser settings.';
+    } else if (state === 'granted') {
+      els.notifPermissionNote.textContent = 'Notifications are enabled for this site.';
+    } else {
+      els.notifPermissionNote.textContent = '';
+    }
+    const disabled = state === 'unsupported';
+    els.notifRainToggle.disabled = disabled;
+    els.notifSevereToggle.disabled = disabled;
+  }
+
+  async function handleAlertToggle(toggleEl, prefKey) {
+    if (!toggleEl.checked) {
+      NotificationService.setPreferences({ [prefKey]: false });
+      updateBellBadge();
+      return;
+    }
+    const state = await NotificationService.requestPermission();
+    updatePermissionNote();
+    if (state !== 'granted') {
+      toggleEl.checked = false; // can't actually notify — don't leave the toggle in a lying state
+      return;
+    }
+    NotificationService.setPreferences({ [prefKey]: true });
+    updateBellBadge();
+  }
+
+  function updateBellBadge() {
+    const anyOn = els.notifRainToggle.checked || els.notifSevereToggle.checked;
+    els.notifBell.classList.toggle('has-alert', anyOn && NotificationService.permissionState() === 'granted');
+  }
+
+  els.notifBell.addEventListener('click', (event) => {
+    event.stopPropagation();
+    updatePermissionNote();
+    els.notifPanel.classList.toggle('hidden');
+  });
+  document.addEventListener('click', (event) => {
+    if (!els.notifPanel.classList.contains('hidden') && !els.notifPanel.contains(event.target) && event.target !== els.notifBell) {
+      els.notifPanel.classList.add('hidden');
+    }
+  });
+  els.notifRainToggle.addEventListener('change', () => handleAlertToggle(els.notifRainToggle, 'rainAlerts'));
+  els.notifSevereToggle.addEventListener('change', () => handleAlertToggle(els.notifSevereToggle, 'severeAlerts'));
+
+  NotificationService.onImminentRainChange((info) => {
+    if (!info) {
+      els.rainBanner.classList.add('hidden');
+      return;
+    }
+    els.rainBannerBody.textContent = `Rain may begin around ${info.time} (in about ${info.minutes} minutes).`;
+    els.rainBanner.classList.remove('hidden');
+  });
+  updatePermissionNote();
+  NotificationService.start();
+  NotificationService.registerServiceWorker();
 
   showState('empty');
 })();
