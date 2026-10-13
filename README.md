@@ -1,5 +1,7 @@
 # Weather Decision Assistant 🇮🇳
 
+https://myvillageweather.online/ - For Demo
+
 This is completely vibe coded using Claude Code.
 
 It's not a traditional weather app — the goal is to use forecast data to help you decide whether conditions are actually good for something (a walk, a ride, hanging laundry out) rather than just showing you numbers.
