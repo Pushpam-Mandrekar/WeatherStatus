@@ -1,126 +1,294 @@
-# Weather Decision Assistant 🇮🇳
+# Weather Decision Assistant 🇮🇳 — Weather Forecasts, Rain Timing & Activity Recommendations
 
-https://myvillageweather.online/ - For Demo
+**A free, India-focused weather app that helps you decide the best time to walk, run, cycle, travel outdoors, or do laundry based on real weather forecast data.**
 
-This is completely vibe coded using Claude Code.
+🌐 **Live Demo:** https://myvillageweather.online/
 
-It's not a traditional weather app — the goal is to use forecast data to help you decide whether conditions are actually good for something (a walk, a ride, hanging laundry out) rather than just showing you numbers.
+Weather Decision Assistant is a lightweight weather forecasting and decision-support app built with HTML, CSS, and vanilla JavaScript. Instead of simply displaying temperature and weather conditions, it interprets forecast data to help answer practical questions:
 
-The app is India-focused, with a special focus on **Goa**: every village, town and taluka in Goa is searchable, sourced from the latest Census 2011 village directory records, alongside a curated list of major Indian cities.
+* Is today a good day for a walk, run, or cycling?
+* When is it likely to rain?
+* Which day this week is best for outdoor activities?
+* Are heat, heavy rain, strong wind, or high UV conditions a concern?
+* What were the recent temperature and rainfall trends?
 
-## Features
+The app is designed for India, with a special focus on **Goa weather, village-level location search, and all 12 Goa talukas**. It combines weather forecasts, historical weather data, rain timing, weather risk analysis, and activity recommendations in one responsive dashboard.
 
-**Location search**
-- Search any of Goa's 12 talukas, or any of its ~330 villages/towns, by name
-- Search 50 major Indian cities (Mumbai, Delhi, Bengaluru, Chennai, Kolkata, Hyderabad, Pune, and more)
-- Case-insensitive, partial matching (typing "Mum" finds Mumbai)
-- Common aliases work too (Bombay → Mumbai, Bangalore → Bengaluru, Panjim → Tiswadi, Vasco → Mormugao, ...)
-- Duplicate village names (a handful of Goan villages share a name across different talukas) are disambiguated in the suggestions dropdown by showing which taluka each one is in
-- "Use my location" resolves your GPS position to a place name — works anywhere, not just the curated list
-- Search is a fixed, offline lookup, not a live geocoder — searching something outside the supported list always returns a clear "No results found for X", never a silently substituted nearby place
+## ✨ Key Features
 
-**Weather dashboard**
-- Current temperature, feels-like, condition, humidity, wind speed + direction, rain probability, rainfall, UV index, cloud cover, atmospheric pressure, visibility, sunrise/sunset
-- 24-hour hourly forecast strip
-- 7-day forecast
-- A location header showing exactly what was matched: name, state, type (Taluka / City / Town / Village), and district/taluka context
+### 🌦️ Weather Forecast for Goa and Major Indian Cities
 
-**🌧️ Rain Timing**
-- Answers "when is it likely to rain?" from the hourly forecast: current rain status, next expected rain time, probability, expected rainfall, an hour-by-hour timeline, and a plain-language summary ("Rain is most likely between 3 PM and 5 PM" / "No significant rain expected today")
+Check current weather conditions and forecasts for supported locations across India.
 
-**⚠️ Weather Risk**
-- Interprets (not just displays) conditions into a risk card — High Heat, Heavy Rain, Strong Wind, High UV, Low Visibility — each with a severity level (🟡 Moderate / 🟠 High / 🔴 Severe). Shows a calm 🟢 Normal state when nothing crosses a threshold; never manufactures risk out of ordinary weather
+* Search Goa's 12 talukas and approximately 330 villages and towns.
+* Search 50 major Indian cities, including Mumbai, Delhi, Bengaluru, Chennai, Kolkata, Hyderabad, and Pune.
+* View temperature, feels-like temperature, humidity, wind speed and direction, rain probability, rainfall, UV index, cloud cover, atmospheric pressure, visibility, sunrise, and sunset.
+* Explore a 24-hour hourly forecast and a 7-day weather forecast.
+* See the matched location's name, state, type, and district or taluka context.
+* Use GPS-based location detection to resolve your current coordinates to a place name.
 
-**📅 Best Days This Week**
-- Ranks the 7-day forecast and surfaces the top 3 days, with separate scoring profiles for Outdoor / Travel / Sports (switchable tabs)
+The location search supports case-insensitive partial matches and common aliases, including Bombay → Mumbai, Bangalore → Bengaluru, Panjim → Tiswadi, and Vasco → Mormugao.
 
-**🗺️ Weather Map**
-- A Leaflet map (OpenStreetMap tiles) with three switchable layers: live rain radar (RainViewer), and Temperature/Wind markers showing real fetched values for the selected location and nearby places — not fabricated heatmap tiles, since that requires a keyed provider this app (no backend) can't hold securely
-- Lazy-loaded: only initializes once you scroll to it
+Goa village and town data is derived from Census 2011 village directory records. The location database is a curated offline lookup rather than a live geocoder, so unsupported locations return an explicit no-results message instead of silently selecting a nearby place.
 
-**📊 Weather History & 🌧️ Rainfall Tracker**
-- Real historical data from Open-Meteo's Archive API (same provider as live forecasts, no new key): average/high/low temperature and rainfall over 7 days / 30 days / 3 months / 1 year, plus a monthly rainfall bar chart and a this-month-vs-same-period-last-year comparison
-- Never fabricates an "average" — every number is a real archived value or a real year-over-year comparison
+### 🌧️ Rain Timing — When Will It Rain?
 
-**🔔 Rain Alerts**
-- An in-page banner appears automatically when rain becomes imminent (within ~60 minutes), regardless of notification permission
-- Browser push notifications are opt-in via toggles in the bell menu (Rain Alert / Severe Weather), asked for once and never re-prompted after a denial
-- **Honest scope**: notifications only fire while this tab is open. True background (closed-tab) push needs a push server with VAPID keys, which this project — by design, no backend — doesn't have. A minimal service worker (`sw.js`) is registered so the standard architecture is in place for that to be added later, but it does not currently deliver anything on its own.
+Understand the expected timing of rainfall using hourly forecast data.
 
-**Decision Assistant** — the original core feature
-- Six everyday activities, each independently scored: Walking, Running, Cycling, Laundry, Car Washing, Photography
-- Deterministic, rule-based scoring (0–100) against temperature, feels-like, rain probability, wind, UV, humidity, cloud cover and visibility — no AI/LLM calls, so it works with zero API keys
-- A rating band (Excellent / Good / Fair / Poor / Avoid) plus the specific reasons behind the score
-- A "best time" window: scans the day's hourly forecast (restricted to daylight hours) and finds the best 2-hour block for that activity, rather than just judging the current instant
-- Modular — new activities are added by pushing one object with an `evaluate()` function onto a list
+* Current rain status.
+* Next expected rain time.
+* Rain probability and expected rainfall.
+* An hour-by-hour rain timeline.
+* A plain-language summary of the expected conditions.
 
-**UI**
-- Clean, responsive layout (desktop + mobile), sections ordered current → hourly → rain timing → risk → best days → 7-day → map → history → rainfall tracker → activities
-- Distinct states for empty, loading, no-results, API/data error, and loaded content — including per-section failure states ("Historical weather data is currently unavailable...", "Weather map could not be loaded...")
-- Quick-access chips for popular cities and all 12 Goa talukas
+For example, the app can summarize when rain is most likely or indicate when no significant rain is expected, based on the available forecast.
 
-## Tech stack
+### ⚠️ Weather Risk Assessment
 
-Plain HTML, CSS and vanilla JavaScript — no framework, no build step, no bundler.
+Identify potentially uncomfortable or hazardous weather conditions without exaggerating ordinary weather.
 
-- No backend, no database, no authentication, no accounts
-- [Open-Meteo](https://open-meteo.com/) forecast + archive (historical) APIs, and Indian-city geocoding (free, no API key)
-- [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) for reverse-geocoding GPS coordinates when you use "Use my location" (free, no API key)
-- [RainViewer](https://www.rainviewer.com/) public tile API for live rain radar (free, no API key)
-- [Leaflet](https://leafletjs.com/) (via CDN) for the map — the one external library in the project, used because hand-rolling map tile rendering isn't reasonable
-- Browser `Notification` API + a minimal service worker for in-tab rain/severe-weather alerts
+The risk dashboard evaluates:
 
-## Project structure
+* High heat
+* Heavy rain
+* Strong wind
+* High UV
+* Low visibility
 
-```
+Each detected risk receives a severity level: Moderate, High, or Severe. When no configured risk threshold is crossed, the dashboard displays a Normal state.
+
+### 📅 Best Days This Week
+
+Find the most suitable days for planned activities using the 7-day forecast.
+
+* Ranks the upcoming seven days.
+* Highlights the top three days.
+* Offers separate scoring profiles for Outdoor activities, Travel, and Sports.
+
+This makes it easier to compare upcoming weather conditions before choosing a day for an outdoor plan.
+
+### 🧠 Weather Decision Assistant — Is Today Good for…?
+
+The core feature translates weather forecast data into practical recommendations for six everyday activities:
+
+* Walking
+* Running
+* Cycling
+* Laundry
+* Car washing
+* Photography
+
+Each activity receives a score from 0 to 100, a rating of Excellent, Good, Fair, Poor, or Avoid, and specific reasons behind the result.
+
+The rule-based recommendation engine evaluates relevant conditions such as temperature, feels-like temperature, rain probability, wind, UV, humidity, cloud cover, and visibility.
+
+It also searches the daylight hours of the hourly forecast for the best two-hour window for each activity, rather than evaluating only the current weather.
+
+**No AI or LLM calls are used for scoring.** Recommendations are generated through deterministic rules, without requiring AI API keys. The activity system is modular, making it straightforward to add more activities.
+
+### 🗺️ Interactive Weather Map
+
+Explore weather information on a Leaflet map using OpenStreetMap tiles.
+
+Available layers include:
+
+* **Rain Radar:** Live radar tiles from RainViewer.
+* **Temperature:** Weather markers displaying fetched temperature values.
+* **Wind:** Weather markers displaying fetched wind values.
+
+Temperature and wind markers use actual fetched values for the selected location and nearby places. They are not presented as fabricated heatmap data.
+
+The map initializes lazily when the user scrolls to it, helping avoid unnecessary work during the initial page load.
+
+### 📊 Historical Weather and Rainfall Tracker
+
+Explore historical weather observations using the Open-Meteo Archive API.
+
+Available time ranges include 7 days, 30 days, 3 months, and 1 year.
+
+Historical information includes:
+
+* Average, maximum, and minimum temperature.
+* Historical rainfall.
+* A monthly rainfall bar chart.
+* A comparison of this month's rainfall against the corresponding period last year.
+
+Historical statistics are based on archived API values and calculated comparisons. The app does not fabricate historical averages or year-over-year figures.
+
+### 🔔 Rain Alerts and Severe Weather Notifications
+
+Get an in-page alert when rain is expected to become imminent, approximately within the next 60 minutes.
+
+Optional browser notification settings include:
+
+* Rain Alert
+* Severe Weather
+
+Notification permission is requested through the browser, and the app does not repeatedly prompt users after permission has been denied.
+
+**Current limitation:** Notifications work only while the browser tab is open. Reliable push notifications after the tab is closed would require additional background push infrastructure and a push server with VAPID keys. The included service worker establishes a starting point for future development but does not independently provide closed-tab push delivery.
+
+### 📱 Responsive User Interface
+
+The dashboard is designed for desktop and mobile screens, with sections ordered to make essential information easy to find:
+
+1. Current weather
+2. Hourly forecast
+3. Rain timing
+4. Weather risk
+5. Best days this week
+6. Seven-day forecast
+7. Weather map
+8. Historical weather
+9. Rainfall tracker
+10. Activity recommendations
+
+The interface also includes quick-access chips for popular Indian cities and all 12 Goa talukas.
+
+Loading, empty, no-results, API-error, and loaded states are handled explicitly. Individual sections can display their own error states when a particular data source is unavailable.
+
+## 🛠️ Technology Stack
+
+Weather Decision Assistant is built with plain HTML, CSS, and vanilla JavaScript. It has no framework, build step, bundler, or application backend.
+
+| Technology / Service     | Purpose                                       |
+| ------------------------ | --------------------------------------------- |
+| HTML5                    | Application structure                         |
+| CSS3                     | Responsive styling and layout                 |
+| Vanilla JavaScript       | UI, weather analysis, and recommendations     |
+| Open-Meteo Forecast API  | Current conditions and weather forecasts      |
+| Open-Meteo Archive API   | Historical weather and rainfall               |
+| Open-Meteo Geocoding API | City geocoding                                |
+| OpenStreetMap Nominatim  | Reverse geocoding GPS coordinates             |
+| Leaflet                  | Interactive weather map                       |
+| OpenStreetMap            | Map tiles                                     |
+| RainViewer               | Rain radar tiles                              |
+| Browser Geolocation API  | Current location detection                    |
+| Browser Notification API | In-tab rain and severe-weather notifications  |
+| Service Worker           | Foundation for future background capabilities |
+
+### External APIs and Resources
+
+* [Open-Meteo](https://open-meteo.com/) — Weather forecasts, historical weather, and geocoding.
+* [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) — Reverse geocoding for GPS-based location detection.
+* [RainViewer](https://www.rainviewer.com/) — Rain radar tile data.
+* [Leaflet](https://leafletjs.com/) — Interactive map library.
+
+The app does not require user accounts, authentication, a database, or a custom backend. The weather services used by the application do not require a project-managed API key for the configured requests.
+
+## 📂 Project Structure
+
+```text
 weather-decision-assistant/
 ├── index.html
-├── sw.js                    Minimal service worker (see Rain Alerts above)
+├── sw.js
 ├── css/
 │   └── style.css
 └── js/
-    ├── app.js                UI orchestration — DOM, events, rendering
-    ├── weather.js             Open-Meteo forecast API + response normalization
-    ├── location.js            Browser geolocation + reverse geocoding (GPS flow)
-    ├── locations-db.js        Curated search database (talukas, cities) + search logic
-    ├── goa-villages-data.js   Goa village/town data (Census 2011-derived)
-    ├── decisions.js           Activity recommendation engine (Walking, Running, ...)
-    ├── rain-timing.js         "When will it rain?" analysis
-    ├── weather-risk.js        Dangerous/uncomfortable conditions detector
-    ├── best-day.js            7-day ranking by activity type
-    ├── historical.js          Open-Meteo Archive API + aggregation
-    ├── weather-map.js         Leaflet map + RainViewer radar + data markers
-    └── notifications.js       Rain/severe-weather alerts (in-tab + banner)
+    ├── app.js
+    ├── weather.js
+    ├── location.js
+    ├── locations-db.js
+    ├── goa-villages-data.js
+    ├── decisions.js
+    ├── rain-timing.js
+    ├── weather-risk.js
+    ├── best-day.js
+    ├── historical.js
+    ├── weather-map.js
+    └── notifications.js
 ```
 
-Weather logic, location logic, and recommendation logic are kept in separate files on purpose — the UI layer (`app.js`) only orchestrates them.
+### Code Organization
 
-## How to run
+* `app.js` — UI orchestration, DOM events, and rendering.
+* `weather.js` — Forecast API requests and response normalization.
+* `location.js` — Browser geolocation and reverse geocoding.
+* `locations-db.js` — Curated location search database and search logic.
+* `goa-villages-data.js` — Goa village and town data derived from Census 2011 records.
+* `decisions.js` — Activity scoring and recommendation engine.
+* `rain-timing.js` — Hourly rainfall analysis.
+* `weather-risk.js` — Weather risk detection.
+* `best-day.js` — Seven-day activity ranking.
+* `historical.js` — Historical API requests and aggregation.
+* `weather-map.js` — Leaflet map, radar layer, and weather markers.
+* `notifications.js` — Rain and severe-weather notification handling.
+* `sw.js` — Minimal service worker.
 
-You need a local web server — opening `index.html` directly (`file://`) will break geolocation and some fetch behavior in most browsers.
+Weather retrieval, location handling, historical analysis, risk detection, and activity scoring are kept in separate modules so that the UI layer primarily coordinates the application rather than containing all the business logic.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+* A modern web browser.
+* Python 3 or another local static HTTP server.
+* Internet access for external weather APIs and map resources.
+
+### Run Locally
+
+Clone your repository and navigate to the project directory:
 
 ```bash
-cd weather-decision-assistant
+git clone https://github.com/YOUR_USERNAME/weatherstatus.git
+cd weatherstatus
+```
+
+Start a local web server:
+
+```bash
 python3 -m http.server 8000
 ```
 
-Then open **http://localhost:8000** in your browser.
+Open the application:
 
-(Any static server works — `npx serve .` or VS Code's Live Server extension are fine alternatives to Python's.)
+```text
+http://localhost:8000
+```
 
-## How to use
+You can also use another static server, such as `npx serve .` or the VS Code Live Server extension.
 
-1. Type a location into the search bar — a Goa village/town/taluka ("Calangute", "Bardez", "Sanguem") or a major Indian city ("Mumbai", "Delhi") — and hit Search, or pick a suggestion as you type.
-2. Or click **Use my location** and allow browser location access.
-3. Or click one of the quick-access chips (popular cities or Goa talukas) on the start screen.
-4. Scroll down to see Rain Timing, Weather Risk, Best Days This Week, the 7-day forecast, the Weather Map, Weather History, and the Rainfall Tracker.
-5. Click the 🔔 bell (top-right) to turn on Rain Alert or Severe Weather notifications — you'll be asked for browser permission once.
-6. Scroll further to **"Is today good for…"** for the six activity recommendation cards, each with a score, best time window, and reasons.
+Opening `index.html` directly through a `file://` URL can interfere with geolocation and network requests. Use a local HTTP server for development.
 
-## Known limitations
+## 📖 How to Use
 
-- Village → taluka assignment for Goa is computed by nearest distance to each taluka's headquarters town, not real administrative boundary polygons. It's been spot-checked against well-known places and is accurate for those, but places right on a taluka border could be mis-assigned.
-- Weather forecasts come from Open-Meteo's model grid — neighboring villages a few kilometers apart may show identical or near-identical data, since the underlying weather model doesn't resolve at village-level granularity.
-- The Weather Map's rain radar reflects real ground-station coverage, which varies by region — a blank area means no signal detected there, not missing functionality.
-- Notifications only work while the browser tab is open (see Rain Alerts above for why).
-- Recommendations are rule-based estimates, not professional or safety advice.
+1. Open the [Weather Decision Assistant demo](https://myvillageweather.online/).
+2. Search for a Goa village, town, or taluka, or select a supported Indian city.
+3. Alternatively, select **Use my location** and grant location permission.
+4. Review current conditions, the hourly forecast, and the seven-day forecast.
+5. Check Rain Timing to understand when rainfall is expected.
+6. Review Weather Risk and Best Days This Week before planning an activity.
+7. Explore the interactive weather map and historical rainfall charts.
+8. Open the notification menu to configure available rain and severe-weather alerts.
+9. Scroll to **Is today good for…?** to compare the six activity recommendations, their scores, reasons, and best time windows.
+
+## ⚠️ Known Limitations
+
+* **Village-to-taluka mapping:** Goa village assignments are calculated using distance from taluka headquarters rather than official administrative boundary polygons. Border locations may occasionally be assigned to the wrong taluka.
+* **Forecast resolution:** Weather forecasts come from Open-Meteo's model grid. Nearby villages can display identical or similar values because the model does not resolve every village independently.
+* **Rain radar coverage:** Radar availability varies by region. A blank radar area may indicate a lack of available radar coverage.
+* **Notifications:** Rain and severe-weather notifications are limited to the open browser tab; reliable closed-tab push notifications are not implemented.
+* **Activity recommendations:** Scores are rule-based estimates based on forecast data. They are intended for everyday planning and are not professional weather, medical, or safety advice.
+* **Location search:** The searchable location list is curated and finite. Locations outside the supported database will not necessarily be found through text search, although GPS-based location resolution can work outside the list.
+
+## 🎯 Project Goals
+
+Weather Decision Assistant explores a practical alternative to traditional weather dashboards: turning weather data into useful, explainable decisions.
+
+The project focuses on:
+
+* Making weather forecasts easier to act on.
+* Improving access to weather information for Goa's villages and towns.
+* Providing transparent, rule-based activity recommendations.
+* Combining current forecasts with historical weather trends.
+* Keeping the application lightweight, modular, and free of a custom backend.
+
+## 👨‍💻 Development
+
+This project was developed with assistance from Claude Code using a vibe-coding workflow. Its weather analysis and recommendation logic is implemented in JavaScript.
+
+Feedback, bug reports, and suggestions for additional activities or location coverage are welcome.
+
+## 📄 License
+
+No license is specified here. Add a `LICENSE` file to the repository if you want to define the permissions and conditions for others to use, modify, and redistribute the code.
