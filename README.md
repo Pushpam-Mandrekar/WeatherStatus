@@ -288,7 +288,3 @@ The project focuses on:
 This project was developed with assistance from Claude Code using a vibe-coding workflow. Its weather analysis and recommendation logic is implemented in JavaScript.
 
 Feedback, bug reports, and suggestions for additional activities or location coverage are welcome.
-
-## 📄 License
-
-No license is specified here. Add a `LICENSE` file to the repository if you want to define the permissions and conditions for others to use, modify, and redistribute the code.
